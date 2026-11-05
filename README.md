@@ -7,6 +7,7 @@ This repository contains the source code only. It does not contain any crawled d
 
 ## Contents
 
+- [Quick start](#quick-start)
 - [Architecture](#architecture)
 - [Repository layout](#repository-layout)
 - [Requirements](#requirements)
@@ -16,6 +17,27 @@ This repository contains the source code only. It does not contain any crawled d
 - [Images](#images)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Quick start
+
+```
+python3 start.py
+```
+
+`start.py` (Python 3.8 or newer, standard library only) asks a series of questions about folders, the website address, the crawler token,
+optional keys and a first crawl, then builds the programs with Go and starts them in the right order: ingest, index service, website and, if
+chosen, a crawler. It writes the settings to `flowsearch.env` and the logs to the `logs` folder inside the data folder.
+
+| Command | What it does |
+|---|---|
+| `python3 start.py` | Asks the questions, builds and starts |
+| `python3 start.py --reuse` | Starts again with the answers of the last run, without asking |
+| `python3 start.py --defaults` | Accepts every default answer |
+| `python3 start.py --dry-run` | Shows what would be done and changes nothing |
+| `python3 start.py status` | Shows what is running |
+| `python3 start.py stop` | Stops everything that `start.py` started |
+
+The ingest and the index service use fixed ports (8811 and 18820), so only one instance can run on a machine at a time.
 
 ## Architecture
 
