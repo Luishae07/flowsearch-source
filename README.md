@@ -1,73 +1,108 @@
 # Flowsearch
 
-Flowsearch is a web search engine written from scratch: its own crawlers, its own on-disk index, its own ranking and its own result pages.
-This repository holds the source code of the search engine and of its crawlers. It does not hold any crawled data (pages, forum posts, screenshots,
-products) and no keys.
+Flowsearch is an open-source web search engine. It consists of a set of crawlers, an ingest service, an on-disk index, a web server with a result
+page and a JSON API, and a few supporting tools. The server side is written in Go (standard library only); one of the crawlers is written in Rust.
 
-Licence: [GNU Affero General Public License v3.0](LICENSE). If you run a modified copy as a website, you must offer its source code to the people
-who use it.
+This repository contains the source code only. It does not contain any crawled data, screenshots or credentials.
 
-## What is here
+## Contents
 
-| Path | What it is |
+- [Architecture](#architecture)
+- [Repository layout](#repository-layout)
+- [Requirements](#requirements)
+- [Building](#building)
+- [Configuration](#configuration)
+- [Credentials](#credentials)
+- [Images](#images)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Architecture
+
+```
+  crawlers  ──HTTP, bearer token──▶  ingest  ──▶  index service  ◀──  web server (site + JSON API)
+ (Go, Rust)                         (saves pages)  (on-disk index)
+```
+
+1. **Crawlers** fetch pages, forum posts, product pages and similar content, and send them to the ingest in batches.
+2. The **ingest** service authenticates the crawler, saves the data as JSON Lines files and passes the text to the index.
+3. The **index** is stored on disk in segments and can be searched while new pages are being added.
+4. The **web server** answers searches (HTML pages and a JSON API) and also serves auxiliary pages such as the live statistics page.
+
+## Repository layout
+
+| Path | Description |
 |---|---|
-| `main.go`, `forumingest.go`, `amazoningest.go`, `robloxingest.go` | the **ingest** service: takes crawled pages (and forum posts, Amazon products, Roblox games) from the crawlers, saves them and hands the text to the index |
-| `web/` | the **search site and API**: result pages, the live page, the Forums tab, the JSON API |
-| `sgindex/`, `sgpack/`, `sgseen/` | the disk index, the packed text format, the "seen" sets |
-| `cmd/sgindexd` | the index as its own service |
-| `cmd/sgcrawl` | the main web crawler (Go) |
-| `cmd/lemmycrawl` | the forum crawler: Lemmy, Discourse and Flowforum |
-| `cmd/amzdata`, `cmd/amzcrawl` | the Amazon product crawlers |
-| `cmd/rbxcrawl` | the Roblox game crawler |
-| `cmd/sgconvert`, `sgconvert3`, `sgpurge`, `sgrepack`, `sgdict`, `sgdict2`, `sglive` | tools for the data files and the dictionary |
-| `cmd/jevchat`, `jevchatbuild`, `jevbrowse`, `botcheck`, `spacefacts` | smaller helper programs |
-| `rustcrawl/` | **flowcrawl**, the Rust crawler that runs on GitHub Actions and sends its pages to the ingest |
-| `deploy_web.sh` | builds the web server and switches to it without downtime |
+| `main.go`, `forumingest.go`, `amazoningest.go`, `robloxingest.go` | Ingest service: pages, forum posts, product pages and game pages |
+| `web/` | Web server: result pages, JSON API, live statistics page, forum search |
+| `sgindex/`, `sgpack/`, `sgseen/` | Disk index, packed text format, sets of already-seen addresses |
+| `cmd/sgindexd` | The index as a separate service |
+| `cmd/sgcrawl` | General web crawler (Go) |
+| `cmd/lemmycrawl` | Forum crawler for Lemmy, Discourse and Flowforum |
+| `cmd/amzdata`, `cmd/amzcrawl` | Product page crawlers |
+| `cmd/rbxcrawl` | Game page crawler |
+| `cmd/sgconvert`, `cmd/sgconvert3`, `cmd/sgpurge`, `cmd/sgrepack`, `cmd/sgdict`, `cmd/sgdict2`, `cmd/sglive` | Maintenance tools for the data files and the dictionary |
+| `cmd/jevchat`, `cmd/jevchatbuild`, `cmd/jevbrowse`, `cmd/botcheck`, `cmd/spacefacts` | Helper programs |
+| `rustcrawl/` | `flowcrawl`, the Rust crawler, intended to run on CI runners such as GitHub Actions |
+| `deploy_web.sh` | Builds the web server and switches to the new build without downtime |
 
-## Build
+## Requirements
 
-Go 1.22 or newer; no third-party Go modules.
+- Go 1.22 or newer
+- Rust (stable) for `rustcrawl/`
+- `cjxl` and `djxl` from [libjxl](https://github.com/libjxl/libjxl) for image handling
+- Chrome or Chromium, or Firefox with geckodriver, for the crawlers that render JavaScript pages
+
+## Building
 
 ```
 go build -o mysearch-ingest .
 go build -o mysearch-web ./web
 go build -o sgindexd ./cmd/sgindexd
 go build -o lemmycrawl ./cmd/lemmycrawl
-```
 
-The Rust crawler:
-
-```
 cd rustcrawl && cargo build --release
 ```
 
-## Where things are kept
+Run `go vet ./...` before sending changes.
 
-Every folder the programs use can be set with an environment variable. Without them, the paths of the original server are used.
+## Configuration
 
-| Variable | Default | Holds |
+The programs read their folders from environment variables. The defaults are the paths of a typical Linux server installation.
+
+| Variable | Default | Purpose |
 |---|---|---|
-| `FLOWSEARCH_DATA_DIR` | `/media/data/mysearch` | the data of the search engine (pages, index, forum posts, products) |
-| `FLOWSEARCH_MEDIA_DIR` | `/media/data` | the disk with all data folders |
-| `FLOWSEARCH_CDN_DIR` | `/media/data/flowcdn` | favicons and pictures, kept as JPEG XL |
-| `FLOWSEARCH_SHOTS_DIR` | `/media/data/flowsearch-wmshots` | screenshots (JPEG XL) |
-| `FLOWSEARCH_HOME` | `/srv/uploads/mysearch` | the folder of the programs and their small files |
-| `FLOWSEARCH_UPLOADS_DIR` | `/srv/uploads` | the folder with all projects |
-| `FLOWSEARCH_SECRETS_DIR` | `/srv/secrets` | keys and tokens, one file each |
-| `FLOWSEARCH_RUNTIME_DIR` | `/run` | short-lived files |
+| `FLOWSEARCH_DATA_DIR` | `/media/data/mysearch` | Search data: pages, index, forum posts, products |
+| `FLOWSEARCH_MEDIA_DIR` | `/media/data` | Disk that holds all data folders |
+| `FLOWSEARCH_CDN_DIR` | `/media/data/flowcdn` | Favicons and pictures (JPEG XL) |
+| `FLOWSEARCH_SHOTS_DIR` | `/media/data/flowsearch-wmshots` | Screenshots (JPEG XL) |
+| `FLOWSEARCH_HOME` | `/srv/uploads/mysearch` | Program folder and small state files |
+| `FLOWSEARCH_UPLOADS_DIR` | `/srv/uploads` | Folder that holds related projects |
+| `FLOWSEARCH_SECRETS_DIR` | `/srv/secrets` | Credentials, one file each |
+| `FLOWSEARCH_RUNTIME_DIR` | `/run` | Short-lived files |
+| `MYSEARCH_ADDR` | `:8812` | Listen address of the web server |
 
-## Keys
+Default listen addresses: ingest `127.0.0.1:8811`, web server `:8812`, index service `127.0.0.1:18820`.
+`deploy_web.sh` starts two copies of the web server on alternating ports behind a front proxy by setting `MYSEARCH_ADDR`.
 
-Keys are read from files in `FLOWSEARCH_SECRETS_DIR`, never from the code. The one every setup needs is `mysearch_token`: the token the crawlers
-send to the ingest (`Authorization: Bearer ...`). Other files (for example for a browser service, an AI service or a safe-browsing check) are only
-read by the parts that use them. Create the files you need; a part without its key does not start that feature.
+## Credentials
+
+Credentials are read from files in `FLOWSEARCH_SECRETS_DIR`; they are never part of the source code.
+
+- `mysearch_token` is required: the bearer token that crawlers send to the ingest.
+- Other files (for example keys for a browser service, an AI service or a safe-browsing check) are read only by the features that use them.
+  A feature without its credential file is not started.
 
 ## Images
 
-Flowsearch stores and serves its pictures (favicons, screenshots) only as **JPEG XL**. The `cjxl` and `djxl` programs from libjxl must be installed
-where the pictures are made.
+Favicons, screenshots and other pictures are stored and served as **JPEG XL** only. Install `cjxl` and `djxl` on the machine that creates them.
 
-## Ports
+## Contributing
 
-The ingest listens on `127.0.0.1:8811`, the web server on `:8812` (or on the address in `MYSEARCH_ADDR`, which is how `deploy_web.sh` runs two copies
-behind a front proxy) and the index service on `127.0.0.1:18820`.
+Issues and pull requests are welcome. Please keep changes small and focused, format Go code with `gofmt`, and make sure `go vet ./...` passes.
+Do not include crawled data or credentials in a contribution.
+
+## License
+
+Flowsearch is released under the [GNU Affero General Public License v3.0](LICENSE). If you run a modified version as a network service,
+you must make its source code available to the users of that service.
