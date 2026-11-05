@@ -1,3 +1,9 @@
+# files made by start.py
+/bin/
+/flowsearch.env
+/.flowsearch-start.json
+__pycache__/
+
 # programs built from this code
 /mysearch-ingest
 /mysearch-web
