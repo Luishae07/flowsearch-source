@@ -1,0 +1,15 @@
+# programs built from this code
+/mysearch-ingest
+/mysearch-web
+/sgindexd
+/lemmycrawl
+/rustcrawl/target/
+
+# data, logs and keys never belong here
+*.jsonl
+*.log
+*.snap
+*.bak*
+*.orig
+*.new
+*.env
