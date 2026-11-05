@@ -125,6 +125,8 @@ func refreshTunnel() {
 	}
 }
 
+var ticketString string // -ticket-file: the work ticket of an open-crawling contributor (sent with every upload)
+
 func post(p outPage) error { return postAny(p) }
 
 // postAny sends one page (a JSON object) or a batch (a JSON list) in one request.
@@ -142,12 +144,19 @@ func postAny(v interface{}) error {
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", ua)
+	if ticketString != "" { // open crawling: the ticket the server gave for this slice of sites
+		req.Header.Set("X-Flowsearch-Ticket", ticketString)
+	}
 	resp, err := ingestHTTP.Do(req)
 	if err != nil {
 		return err
 	}
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
+	if resp.StatusCode == 403 && ticketString != "" {
+		log.Printf("the server refused the ticket (it ran out, or is not valid) - stopping")
+		os.Exit(3)
+	}
 	if resp.StatusCode == 429 {
 		log.Printf("the server's daily data limit is reached - stopping the crawl until tomorrow")
 		os.Exit(0)
@@ -322,7 +331,15 @@ func main() {
 	flag.IntVar(&maxPages, "maxpages", 0, "stop after this many pages from one site (0 = no limit)")
 	lang := flag.String("lang", "en", "keep pages in this language: en, de, or any (no language filter - webmaster-submitted sites)")
 	oneURL := flag.String("url", "", "fetch just this one page, send it and exit (a webmaster's recrawl request)")
+	ticketFile := flag.String("ticket-file", "", "open crawling: file with the work ticket the server gave (sent with every upload)")
 	flag.Parse()
+	if *ticketFile != "" {
+		tb, err := os.ReadFile(*ticketFile)
+		if err != nil {
+			log.Fatal("no ticket file ", *ticketFile)
+		}
+		ticketString = strings.TrimSpace(string(tb))
+	}
 	if *lang == "de-site" { // a site its owner says is German: judge by the text, not the address
 		langOK = sgpack.IsGermanText
 	}

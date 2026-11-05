@@ -37,7 +37,10 @@ chosen, a crawler. It writes the settings to `flowsearch.env` and the logs to th
 | `python3 start.py status` | Shows what is running |
 | `python3 start.py stop` | Stops everything that `start.py` started |
 
-The ingest and the index service use fixed ports (8811 and 18820), so only one instance can run on a machine at a time.
+The ingest and the index service use fixed ports (8811 and 18820), so only one instance can run on a machine at a time. The ingest address can be changed with `MYSEARCH_INGEST_ADDR`.
+
+Question 0 of `start.py` also offers **helping to crawl**: run only a crawler on this machine that sends pages to somebody else's Flowsearch server.
+See [CRAWLING.md](CRAWLING.md) for how open crawling works, for contributors and for operators.
 
 ## Architecture
 
@@ -63,6 +66,8 @@ The ingest and the index service use fixed ports (8811 and 18820), so only one i
 | `cmd/lemmycrawl` | Forum crawler for Lemmy, Discourse and Flowforum |
 | `cmd/amzdata`, `cmd/amzcrawl` | Product page crawlers |
 | `cmd/rbxcrawl` | Game page crawler |
+| `contrib.go`, `contribverify.go` | **Open crawling** on the server: contributor tokens, a queue of work, signed tickets, upload checks and sample verification (see [CRAWLING.md](CRAWLING.md)) |
+| `cmd/fscontrib` | The official client for open crawling: asks for work, checks it against its hash, runs `sgcrawl` on it |
 | `cmd/sgconvert`, `cmd/sgconvert3`, `cmd/sgpurge`, `cmd/sgrepack`, `cmd/sgdict`, `cmd/sgdict2`, `cmd/sglive` | Maintenance tools for the data files and the dictionary |
 | `cmd/jevchat`, `cmd/jevchatbuild`, `cmd/jevbrowse`, `cmd/botcheck`, `cmd/spacefacts` | Helper programs |
 | `rustcrawl/` | `flowcrawl`, the Rust crawler, intended to run on CI runners such as GitHub Actions |

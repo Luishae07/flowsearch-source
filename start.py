@@ -183,8 +183,96 @@ def port_busy(port):
 
 # ---------------------------------------------------------------------------------------------------------------- the questions
 
+def need_server(v):
+    return "" if re.fullmatch(r"https?://[^\s/]+(/\S*)?", v) else "Use the full address, for example https://search.example.org"
+
+
+def need_ctoken(v):
+    return "" if v.startswith("fsc_") and len(v) >= 20 else "A contributor token starts with fsc_ (the operator of the server gives it to you)."
+
+
+def contributor_questions():
+    """Open crawling: this machine only runs a crawler that sends pages to somebody else's Flowsearch server."""
+    a = {"mode": "contribute"}
+    heading("Help to crawl")
+    say("You will run the official crawler on this machine. The server gives it a list of sites to crawl; the crawler sends the pages it reads to that server.")
+    a["server"] = ask("Address of the Flowsearch server", "", need_server).rstrip("/")
+    a["token"] = ask("Your contributor token (hidden)", "", need_ctoken, secret=True)
+    a["folder"] = ask("Folder for the crawler's work files and the token", str(Path.home() / "flowsearch-contrib"))
+    a["workers"] = ask("How many sites to crawl at the same time (a small number is polite to your connection)", "20", need_int(1, 200))
+    a["background"] = yesno("Run in the background (keeps running after this window is closed)?", True)
+    heading("The rules")
+    rules = ""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(a["server"] + "/api/contrib/policy", timeout=15) as r:
+            rules = r.read(20000).decode("utf-8", "replace").strip()
+    except Exception as e:
+        say("   (the rules could not be loaded from the server: %s)" % e)
+    if rules:
+        say(rules)
+    say("\nThe sites you crawl will see your computer's IP address.")
+    if not yesno("Do you accept these rules?", False):
+        sys.exit("Not started. Contributing needs the rules to be accepted.")
+    return a
+
+
+def contributor_run(a):
+    heading("Writing the files")
+    folder = Path(a["folder"])
+    folder.mkdir(parents=True, exist_ok=True)
+    os.chmod(folder, 0o700)
+    tok = folder / "fscontrib.token"
+    if a.get("token"):
+        tok.write_text(a["token"] + "\n")
+        os.chmod(tok, 0o600)
+        say("  saved the token in %s" % tok)
+    elif not tok.exists():
+        sys.exit("There is no token yet (%s). Run python3 start.py without --reuse once." % tok)
+    saved = {k: v for k, v in a.items() if k != "token"}
+    STATE.write_text(json.dumps(saved, indent=2) + "\n")
+    heading("Building")
+    BIN.mkdir(exist_ok=True)
+    for name, pkg in (("sgcrawl", "./cmd/sgcrawl"), ("fscontrib", "./cmd/fscontrib")):
+        say("  go build %-10s ..." % name)
+        r = subprocess.run(["go", "build", "-o", str(BIN / name), pkg], cwd=str(REPO), capture_output=True, text=True)
+        if r.returncode != 0:
+            sys.exit("\nBuilding %s failed:\n%s" % (name, r.stdout + r.stderr))
+    heading("Starting")
+    log = open(folder / "fscontrib.log", "ab")
+    argv = [str(BIN / "fscontrib"), "-server", a["server"], "-token-file", str(tok), "-crawler", str(BIN / "sgcrawl"),
+            "-dir", str(folder / "work"), "-workers", str(a["workers"])]
+    p = subprocess.Popen(argv, cwd=str(folder), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    (folder / "pids.json").write_text(json.dumps({"fscontrib": p.pid}))
+    time.sleep(2)
+    if p.poll() is not None:
+        sys.exit("The client stopped right away. Its log (%s):\n%s" % (folder / "fscontrib.log", (folder / "fscontrib.log").read_text(errors="replace")[-1500:]))
+    heading("You are contributing")
+    say("  Log            %s" % (folder / "fscontrib.log"))
+    say("  Stop with      python3 start.py stop")
+    say("  Status with    python3 start.py status")
+    say("  The client asks the server for work; if other contributors are ahead of you it waits in line and says so in the log.")
+    if not a["background"]:
+        say("\nRunning in this window. Press Ctrl-C to stop.")
+        try:
+            while p.poll() is None:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            say("\nStopping ...")
+            try:
+                os.killpg(p.pid, signal.SIGTERM)
+            except Exception:
+                pass
+            (folder / "pids.json").unlink(missing_ok=True)
+
+
 def questions():
-    a = {}
+    heading("0. What do you want to do?")
+    say("  1  Run a complete Flowsearch server on this machine")
+    say("  2  Help to crawl: run a crawler here that sends pages to a Flowsearch server somebody else runs")
+    if ask("Choose 1 or 2", "1", lambda v: "" if v in ("1", "2") else "Enter 1 or 2.") == "2":
+        return contributor_questions()
+    a = {"mode": "server"}
     heading("1. Folders")
     say("Everything Flowsearch stores goes into folders you choose here. Press Enter to accept the suggestion in [brackets].")
     base = Path(ask("Main folder for Flowsearch", str(Path.home() / "flowsearch"))).expanduser()
@@ -450,7 +538,10 @@ def load_state():
 
 
 def pids_of(a):
-    f = Path(a["runtime"]) / "flowsearch-pids.json"
+    if a.get("mode") == "contribute":
+        f = Path(a["folder"]) / "pids.json"
+    else:
+        f = Path(a["runtime"]) / "flowsearch-pids.json"
     return f, (json.loads(f.read_text()) if f.exists() else {})
 
 
@@ -472,6 +563,10 @@ def cmd_status():
         say("  Nothing was started by start.py (or it was stopped).")
     for n, pid in pids.items():
         say("  %-10s %s (process %d)" % (n, "running" if alive(pid) else "not running", pid))
+    if a.get("mode") == "contribute":
+        say("  server     %s" % a["server"])
+        say("  log        %s" % (Path(a["folder"]) / "fscontrib.log"))
+        return
     web_port = int(a["web"].rsplit(":", 1)[-1])
     for n, p in (("ingest", INGEST_PORT), ("index", INDEX_PORT), ("website", web_port)):
         say("  port %-6d %s: %s" % (p, n, "open" if port_busy(p) else "closed"))
@@ -533,6 +628,17 @@ def main():
     else:
         say("\nI am going to ask a number of questions. You can stop at any time with Ctrl-C; nothing is written until the end.")
         a = questions()
+    if a.get("mode") == "contribute":
+        heading("Summary")
+        say("  Sends pages to  %s" % a["server"])
+        say("  Folder          %s" % a["folder"])
+        say("  Sites at once   %s" % a["workers"])
+        if ARGS.dry_run:
+            say("\nDry run: nothing was written, built or started.")
+            return
+        if not ARGS.reuse and not ARGS.defaults and not yesno("\nBuild and start with these settings?", True):
+            sys.exit("Nothing was done.")
+        return contributor_run(a)
     summary(a)
     if ARGS.dry_run:
         say("\nDry run: nothing was written, built or started.")

@@ -522,8 +522,10 @@ func main() {
 	http.HandleFunc("/api/amazon/products", amazonProducts)
 	http.HandleFunc("/api/roblox/known", robloxKnown)
 	http.HandleFunc("/api/roblox/games", robloxGames)
+	contribInit()
+	http.HandleFunc("/api/contrib/", contribRouter) // open crawling: contributors' tokens, tickets and uploads (contrib.go)
 	http.HandleFunc("/api/stats", stats)
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
-	log.Printf("ingest API on 127.0.0.1:8811, %d addresses known (on disk), pages in %s", set.Len(), path)
-	log.Fatal((&http.Server{Addr: "127.0.0.1:8811", ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 3 * time.Minute}).ListenAndServe())
+	log.Printf("ingest API on %s, %d addresses known (on disk), pages in %s", ingestAddr, set.Len(), path)
+	log.Fatal((&http.Server{Addr: ingestAddr, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 3 * time.Minute}).ListenAndServe())
 }

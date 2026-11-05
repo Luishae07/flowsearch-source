@@ -31,4 +31,7 @@ var (
 	fsUploads = fsEnv("FLOWSEARCH_UPLOADS_DIR", "/srv/uploads")
 	fsSecrets = fsEnv("FLOWSEARCH_SECRETS_DIR", "/srv/secrets")
 	fsRun     = fsEnv("FLOWSEARCH_RUNTIME_DIR", "/run")
+
+	// the address the ingest listens on (only this program uses it)
+	ingestAddr = fsEnv("MYSEARCH_INGEST_ADDR", "127.0.0.1:8811")
 )
