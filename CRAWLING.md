@@ -109,6 +109,11 @@ and `GET /api/contrib/admin/list` for every contributor with pages, matches, fai
 | `allowed_client_sha256` | empty | SHA-256 of official `fscontrib` builds; empty accepts any build |
 | `allowed_crawler_sha256` | empty | SHA-256 of official `sgcrawl` builds; empty accepts any build |
 | `recycle_days` | 30 | A finished slice comes up again after this many days |
+| `ip_per_minute` | 150 | Requests one IP address may make to the contributor API in a minute |
+| `ticket_per_minute` | 12 | Of those, requests for work |
+| `admin_per_minute` | 30 | Of those, admin calls |
+| `bad_auth_limit` | 10 | Wrong tokens from one IP address within 10 minutes before it is blocked |
+| `block_minutes` | 15 | How long such an address is blocked |
 
 Hosts that must never be accepted go in `<data folder>/contrib/blocklist.txt`, one per line.
 
@@ -134,5 +139,11 @@ trust is at least 0.85. If trust falls below 0.85 they are held back again; belo
 - The server fetches addresses chosen by contributors (to check the sample). Every connection refuses private, loopback, link-local and other
   non-public addresses, also after a redirect.
 - Tickets are signed with the key in `<secrets folder>/contrib_hmac_key`, created on first start. If you replace it, all open tickets stop working.
-- The ingest also carries the main token and the admin calls. Put a rate-limiting proxy in front of any ingest that is reachable from the internet.
+- **Rate limiting is built in**, no proxy is needed. Every IP address has a number of requests a minute for the contributor API (less for work
+  requests and admin calls), and an address that sends too many wrong tokens is blocked for a while, which stops guessing of tokens. Besides this,
+  every contributor has their own limits: uploads a minute and pages a day.
+- The visitor's address is read from the tunnel's header (`CF-Connecting-IP`, `X-Real-IP` or `X-Forwarded-For`), and only when the connection itself
+  comes from the machine the ingest runs on. Requests from that machine without such a header are not limited. If you open the ingest to the
+  internet directly, the connection's own address is used.
+- The ingest also carries the main token and the admin calls. Wrong main tokens count as wrong tokens and lead to a block as well.
 - A contributor's pages are only as trustworthy as your seed list: contributors can only send pages from the sites you put in it.

@@ -55,12 +55,18 @@ type contribConfig struct {
 	MinVersion      string   `json:"min_version"`           // oldest client version that may ask for work
 	AllowedClients  []string `json:"allowed_client_sha256"` // build hashes of the official client (empty: any build)
 	AllowedCrawlers []string `json:"allowed_crawler_sha256"`
-	RecycleDays     int      `json:"recycle_days"` // a finished slice comes up again after this many days
+	RecycleDays     int      `json:"recycle_days"`      // a finished slice comes up again after this many days
+	IPPerMinute     int      `json:"ip_per_minute"`     // requests one IP address may make to the contributor API in a minute (all kinds together)
+	TicketPerMinute int      `json:"ticket_per_minute"` // of those, requests for work
+	AdminPerMinute  int      `json:"admin_per_minute"`  // of those, admin calls
+	BadAuthLimit    int      `json:"bad_auth_limit"`    // wrong tokens from one IP address within 10 minutes before it is blocked
+	BlockMinutes    int      `json:"block_minutes"`     // how long such an address is blocked
 }
 
 func defaultContribConfig() contribConfig {
 	return contribConfig{SliceSize: 50, TicketHours: 6, MaxPagesPerSite: 200, MaxPagesTicket: 20000, DelayMs: 1000, Lang: "en", DailyCap: 50000,
-		TrustedBatches: 3, SamplePercent: 5, MinVersion: "1.0.0", RecycleDays: 30}
+		TrustedBatches: 3, SamplePercent: 5, MinVersion: "1.0.0", RecycleDays: 30,
+		IPPerMinute: 150, TicketPerMinute: 12, AdminPerMinute: 30, BadAuthLimit: 10, BlockMinutes: 15}
 }
 
 type contributor struct {
