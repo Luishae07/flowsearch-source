@@ -48,10 +48,24 @@ This repository contains the source code only. It does not contain any crawled d
 
 ## Requirements
 
+### Software
+
+- Linux (developed and run on Debian 13)
 - Go 1.22 or newer
 - Rust (stable) for `rustcrawl/`
 - `cjxl` and `djxl` from [libjxl](https://github.com/libjxl/libjxl) for image handling
 - Chrome or Chromium, or Firefox with geckodriver, for the crawlers that render JavaScript pages
+
+### Hardware
+
+| Component | Requirement | Notes |
+|---|---|---|
+| CPU | x86-64, 4 cores or more recommended | Searching and crawling are not CPU-heavy. The reference machine is a laptop with an Intel Core i7-10510U (4 cores, 8 threads) that runs every service at once. Other architectures supported by Go and Rust should work but have not been tested. |
+| GPU | not needed | No code uses a GPU. |
+| APU / integrated graphics | not needed | Everything runs headless. Browser-based crawlers use headless Chrome or Firefox, which need no display. |
+| RAM | grows with the index; 16 GB is comfortable | Reference, with an index of about 60 million pages: web server 1.3 GB, index service 1.3 GB, ingest 0.5 GB. Each headless browser started by a crawler needs additional memory. |
+| Disk | SSD recommended; about 100 GB for the reference index | About 60 million pages take roughly 62 GB for the page store, 10 GB for the index and 2 GB for forum posts, plus pictures. |
+| Network | stable connection | Bandwidth depends on how fast the crawlers run. |
 
 ## Building
 
