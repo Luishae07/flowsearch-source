@@ -775,7 +775,14 @@ document.addEventListener('keydown',e=>{
   const t=document.activeElement&&document.activeElement.tagName;
   if(e.key==='/'&&t!=='INPUT'&&t!=='TEXTAREA'){e.preventDefault();const i=document.querySelector('.sbox input');if(i){i.focus();i.select()}}
   if(e.key==='Escape'&&t==='INPUT')document.activeElement.blur();
-});`
+});
+// When Flowsearch is shown in a frame on its fixed address (https://luishae07.github.io/flowsearch/), tell that page where we are, so that its address
+// bar follows (the message goes only to that one address), and let links to other websites open in the whole window, because most sites refuse to be framed.
+if(window.parent!==window){
+  const tell=()=>{try{parent.postMessage({flowsearch:1,path:location.pathname+location.search+location.hash,title:document.title},'https://luishae07.github.io')}catch(e){}};
+  tell();addEventListener('popstate',tell);addEventListener('hashchange',tell);addEventListener('load',tell);
+  document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href]');if(a&&a.host&&a.host!==location.host&&!a.target)a.target='_top'},true);
+}`
 
 const svgIcon = `<link rel=icon href=/favicon.svg><link rel=search type="application/opensearchdescription+xml" title="Flowsearch" href=/opensearch.xml>`
 
@@ -1523,7 +1530,7 @@ func main() {
 		addr = ":8812"
 	}
 	log.Printf("Flowsearch is ready on %s", addr)
-	log.Fatal((&http.Server{Addr: addr, Handler: langMux(http.DefaultServeMux), ReadHeaderTimeout: 10 * time.Second, WriteTimeout: 20 * time.Second}).ListenAndServe())
+	log.Fatal((&http.Server{Addr: addr, Handler: corsMux(langMux(http.DefaultServeMux)), ReadHeaderTimeout: 10 * time.Second, WriteTimeout: 20 * time.Second}).ListenAndServe())
 }
 
 // ---- live stats over WebSocket (RFC 6455, server to client only, no library) ----
