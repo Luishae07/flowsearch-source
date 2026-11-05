@@ -523,7 +523,7 @@ func main() {
 	http.HandleFunc("/api/roblox/known", robloxKnown)
 	http.HandleFunc("/api/roblox/games", robloxGames)
 	contribInit()
-	http.HandleFunc("/api/contrib/", contribLimited) // open crawling: contributors' tokens, tickets and uploads (contrib.go)
+	http.HandleFunc("/api/contribute/", contribLimited) // open crawling: contributors' tokens, tickets and uploads (contrib.go)
 	http.HandleFunc("/api/stats", stats)
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
 	log.Printf("ingest API on %s, %d addresses known (on disk), pages in %s", ingestAddr, set.Len(), path)

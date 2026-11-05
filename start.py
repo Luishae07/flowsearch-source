@@ -205,7 +205,7 @@ def contributor_questions():
     rules = ""
     try:
         import urllib.request
-        with urllib.request.urlopen(a["server"] + "/api/contrib/policy", timeout=15) as r:
+        with urllib.request.urlopen(a["server"] + "/api/contribute/policy", timeout=15) as r:
             rules = r.read(20000).decode("utf-8", "replace").strip()
     except Exception as e:
         say("   (the rules could not be loaded from the server: %s)" % e)

@@ -3,11 +3,11 @@ package main
 // Open crawling: people run the official crawler on their own machines and send pages to this server. Everything is checked HERE, because a program that runs on
 // somebody else's computer can always be changed; the build hash only catches old or accidentally changed copies.
 //
-//   an operator makes a contributor        POST /api/contrib/admin/create   (the main ingest token)  -> a personal token, shown once
-//   a contributor asks for work            POST /api/contrib/ticket         -> a signed ticket with a slice of the seed list and the SHA-256 of that slice
-//   the crawler sends its pages            POST /api/contrib/submit         (token + ticket) -> every page must be on a site of the slice
-//   the crawler reports that it is done    POST /api/contrib/complete
-//   anyone can read                        GET  /api/contrib/policy, GET /api/contrib/stats
+//   an operator makes a contributor        POST /api/contribute/admin/create   (the main ingest token)  -> a personal token, shown once
+//   a contributor asks for work            POST /api/contribute/ticket         -> a signed ticket with a slice of the seed list and the SHA-256 of that slice
+//   the crawler sends its pages            POST /api/contribute/submit         (token + ticket) -> every page must be on a site of the slice
+//   the crawler reports that it is done    POST /api/contribute/complete
+//   anyone can read                        GET  /api/contribute/policy, GET /api/contribute/stats
 //
 // The work is a queue. The seed list is cut into slices of sites. A contributor who asks gets the first free slice (the lowest number); a slice whose
 // ticket ran out goes back to the front. When no slice is free, the contributors who ask wait in line and are served in the order they came.
@@ -182,7 +182,7 @@ func contribInit() {
 		}
 	}
 	go verifyLoop()
-	log.Printf("contrib: %d contributors, %d slices assigned; contributor API on /api/contrib/", len(contribs), len(assigns))
+	log.Printf("contrib: %d contributors, %d slices assigned; contributor API on /api/contribute/", len(contribs), len(assigns))
 }
 
 func saveJSON(path string, v any) {
@@ -398,7 +398,7 @@ func inList(l []string, v string) bool {
 // ---- the router
 
 func contribRouter(w http.ResponseWriter, r *http.Request) {
-	switch strings.TrimPrefix(r.URL.Path, "/api/contrib/") {
+	switch strings.TrimPrefix(r.URL.Path, "/api/contribute/") {
 	case "policy":
 		contribPolicy(w, r)
 	case "stats":

@@ -1,6 +1,6 @@
 package main
 
-// Rate limiting for the contributor API (/api/contrib/), done inside the ingest - no proxy needed.
+// Rate limiting for the contributor API (/api/contribute/), done inside the ingest - no proxy needed.
 //   - every IP address gets a number of requests a minute: for everything together, and less for work requests and admin calls
 //   - an address that sends too many wrong tokens (HTTP 401) is blocked for a while (this stops guessing of tokens)
 //   - requests from this machine itself (no forwarding header) are not limited
@@ -74,7 +74,7 @@ func clientIP(r *http.Request) (string, bool) {
 }
 
 func rateKind(path string) string {
-	switch p := strings.TrimPrefix(path, "/api/contrib/"); {
+	switch p := strings.TrimPrefix(path, "/api/contribute/"); {
 	case p == "ticket":
 		return "ticket"
 	case strings.HasPrefix(p, "admin/"):
@@ -157,7 +157,7 @@ func (s *statusRecorder) WriteHeader(c int) {
 	s.ResponseWriter.WriteHeader(c)
 }
 
-// contribLimited is the handler of /api/contrib/: the limits first, then the real router.
+// contribLimited is the handler of /api/contribute/: the limits first, then the real router.
 func contribLimited(w http.ResponseWriter, r *http.Request) {
 	ip, local := clientIP(r)
 	if local {

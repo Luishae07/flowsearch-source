@@ -68,7 +68,7 @@ echo "fsc_your_token" > fscontrib.token && chmod 600 fscontrib.token
 
 ### The rules
 
-The server publishes them at `/api/contrib/policy`. In short: crawl only the sites you were given, obey robots.txt (the crawler does), do not send
+The server publishes them at `/api/contribute/policy`. In short: crawl only the sites you were given, obey robots.txt (the crawler does), do not send
 HTML, scripts or personal data, and accept that the sites you crawl see your computer's IP address.
 
 ## For operators
@@ -81,14 +81,14 @@ Open crawling is part of the ingest and is on all the time. It does nothing unti
 2. **Create a contributor.** The token is shown once and stored only as a hash:
 
    ```
-   curl -X POST https://your-ingest/api/contrib/admin/create \
+   curl -X POST https://your-ingest/api/contribute/admin/create \
         -H "Authorization: Bearer $MAIN_INGEST_TOKEN" -d '{"name":"alice"}'
    ```
 
 3. Give the contributor the token and the server address.
 
-Other admin calls (same main token): `POST /api/contrib/admin/revoke` with `{"id": "...", "status": "revoked"}` (also `suspended` or `active`),
-and `GET /api/contrib/admin/list` for every contributor with pages, matches, failures and trust.
+Other admin calls (same main token): `POST /api/contribute/admin/revoke` with `{"id": "...", "status": "revoked"}` (also `suspended` or `active`),
+and `GET /api/contribute/admin/list` for every contributor with pages, matches, failures and trust.
 
 ### Settings
 
@@ -130,7 +130,7 @@ trust is at least 0.85. If trust falls below 0.85 they are held back again; belo
 
 ### Monitoring
 
-- `GET /api/contrib/stats` (public): contributors, accepted pages, slices done and in progress, people waiting in line, batches held back, and a
+- `GET /api/contribute/stats` (public): contributors, accepted pages, slices done and in progress, people waiting in line, batches held back, and a
   leaderboard of the top 20.
 - The ingest log lines starting with `contrib:` show every slice handed out, every batch stored or thrown away, and suspended accounts.
 

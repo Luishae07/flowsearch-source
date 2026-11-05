@@ -161,7 +161,7 @@ func main() {
 	backoff := 10 * time.Second
 loop:
 	for ctx.Err() == nil {
-		code, body, err := call("/api/contrib/ticket", hello, "")
+		code, body, err := call("/api/contribute/ticket", hello, "")
 		if err != nil {
 			log.Printf("could not reach the server (%v); trying again in %s", err, backoff)
 			if !sleepCtx(ctx, backoff) {
@@ -217,7 +217,7 @@ loop:
 			hours = 0.1
 		}
 		log.Printf("work received: slice %d, %d sites, at most %d pages per site, valid for %.1f hours. Crawling ...", tk.Slice, sites, tk.MaxPerSite, hours)
-		args := []string{"-ingest", server + "/api/contrib/submit", "-token-file", absToken, "-ticket-file", ticketPath, "-seeds", seedsPath,
+		args := []string{"-ingest", server + "/api/contribute/submit", "-token-file", absToken, "-ticket-file", ticketPath, "-seeds", seedsPath,
 			"-lang", tk.Lang, "-workers", strconv.Itoa(*workers), "-maxpages", strconv.Itoa(tk.MaxPerSite), "-delay", strconv.Itoa(tk.DelayMs) + "ms",
 			"-hours", strconv.FormatFloat(hours, 'f', 2, 64)}
 		cmd := exec.CommandContext(ctx, absCrawler, args...)
@@ -235,7 +235,7 @@ loop:
 		if runErr != nil {
 			log.Printf("the crawler ended with an error: %v (its log is in %s)", runErr, filepath.Join(work, "sgcrawl.log"))
 		}
-		if c, b, err := call("/api/contrib/complete", nil, tk.Ticket); err == nil && c == 200 {
+		if c, b, err := call("/api/contribute/complete", nil, tk.Ticket); err == nil && c == 200 {
 			log.Printf("slice %d finished and reported: %s", tk.Slice, strings.TrimSpace(string(b)))
 		} else {
 			log.Printf("could not report slice %d as finished (%v %s)", tk.Slice, err, strings.TrimSpace(string(b)))
